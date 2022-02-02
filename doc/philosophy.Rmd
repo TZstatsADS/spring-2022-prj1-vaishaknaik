@@ -243,6 +243,7 @@ emotion_pie_chart(german_idealism_df)
 
 #### Nietzsche: 
 Nietzsche aims at freeing human beings from their false consciousness about morality. Words used are Sense, Soul, and Value. Sentiments are almost equally divided.
+
 ```{r,warning=FALSE, message=FALSE,echo=FALSE}
 philosophyWordCloud(df_school_of_thought[9],philosophy_data,names(df_school_of_thought[9]))
 emotion_pie_chart(nietzsche_df)
