@@ -1,20 +1,19 @@
 # Applied Data Science @ Columbia
-## Fall 2021
+## Spring 2022
 ## Project 1: A "data story" on the history of philosophy
 
-<img src="figs/100126-the-glass.jpeg" width="500">
+<img src="figs/origin-121.jpeg" width="500">
 
 ### [Project Description](doc/)
-This is the first and only *individual* (as opposed to *team*) project this semester. 
 
-Term: Fall 2021
 
-+ Projec title: Lorem ipsum dolor sit amet
-+ This project is conducted by [your name]
+Term: Spring 2022
 
-+ Project summary: [a short summary] Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
++ Project title: Deep dive into Philosophers and their schools of thought.
++ This project is conducted by Vaishak Naik
 
-Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
++ Project summary: The main aim of this project is to deep dive into the different schools of thought, what words each school of thought emphasizes, and what sentiment is emphasized in each school of thought. This report is created based on the [Philosophy Data Project](http://www.philosophydata.com/) dataset. The dataset consists of more than 300 thousand sentences and 13 schools of thought.
+This folder is organized as follows.
 
 ```
 proj/

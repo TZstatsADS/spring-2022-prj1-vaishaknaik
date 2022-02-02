@@ -2,7 +2,7 @@
 ## STAT GR5243/GU4243 Fall 2021
 ### Project 1 An R Notebook "Data Story" on the history of philosophy
 
-<img src="../figs/100126-the-glass.jpeg" width="400">
+<img src="../figs/origin-121.jpeg" width="400">
 
 The goal of this project is to write a data story on philosophy using the dataset for the [Philosophy Data Project](http://philosophydata.com/index.html). Applying data mining, statistical analysis and visualization, students should derive interesting findings in this collection of philosophy texts and write a "data story" that can be shared with a **general audience**. 
 

@@ -1,0 +1,283 @@
+---
+title: "Deep dive into Philosophers and their schools of thought"
+author: "Vaishak Naik"
+date: "02/01/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = F)
+```
+
+# {.tabset}
+
+
+## Introduction
+
+The main aim of this report is to deep dive into the different schools of thought, what words each school of thought emphasizes, and what sentiment is emphasized in each school of thought. This report is created based on the [Philosophy Data Project](http://www.philosophydata.com/) dataset. The dataset consists of more than 300 thousand sentences and 13 schools of thought.
+
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+#It will take 20-25 mins to Knit the whole document.
+
+packages.used=c("tm", "wordcloud", "RColorBrewer", "dplyr", "tidytext","SentimentAnalysis","reshape2","Rcpp","tibble")
+
+#Check packages.
+packages.needed=setdiff(packages.used, 
+                        intersect(installed.packages()[,1], 
+                                  packages.used))
+#install packages
+
+if(length(packages.needed)>0){
+  install.packages(packages.needed, dependencies = TRUE)
+}
+
+#load packages
+library(tm)
+library(wordcloud)
+library(RColorBrewer)
+library(dplyr)
+library(tidytext)
+library(ggplot2)
+library(reshape2)
+library(SentimentAnalysis)
+library(Rcpp)
+library(tibble)
+source("../lib/stopword_list.R")
+```
+
+
+```{r read data, warning=FALSE, message=FALSE,echo=FALSE}
+#import data
+philosophy_data <-read.csv('../data/philosophy_data.csv',stringsAsFactors = T)
+```
+
+As you can see below, different authors have contributed to each school of thought. Let us analyze it further.
+
+```{r explore data, warning=FALSE, message=FALSE, echo=FALSE}
+
+authorFunction <- function(schoolofThought){
+ authorName <- philosophy_data[philosophy_data$school == schoolofThought,]
+ print("School of Thought")
+ print(schoolofThought)
+ cat("\n")
+ print("Authors")
+ print(unique(authorName$author))
+ cat("\n\n")
+}
+
+listschoolofThought <- levels(philosophy_data$school)
+
+for(school in listschoolofThought) {
+  authorFunction(school)
+}
+df_school_of_thought <- split(philosophy_data,listschoolofThought)
+```
+
+
+
+## Words philosophers use to express their thoughts.
+
+When we compare all the sentences of different schools of thought and philosophers, one of the major trends we can observe is that all the philosophers talk about Time, Man, Nature, and World. They use these words to articulate their thoughts, meaning that each ideology uses similar words, but they express different ideas. 
+
+```{r data preprocessing,warning=FALSE, message=FALSE, echo=FALSE}
+philosophy_data_corpus = Corpus(VectorSource(philosophy_data$tokenized_txt))
+philosophy_data_corpus = tm_map(philosophy_data_corpus, removeNumbers)
+philosophy_data_corpus = tm_map(philosophy_data_corpus, removePunctuation)
+philosophy_data_corpus = tm_map(philosophy_data_corpus, removeWords,listofstopwords)
+philosophy_data_corpus =  tm_map(philosophy_data_corpus, stripWhitespace)
+
+ps.tdm.all<-TermDocumentMatrix(philosophy_data_corpus)
+
+ps.tdm.tidy=tidy(ps.tdm.all)
+ps.tdm.overall=summarise(group_by(ps.tdm.tidy, term), s_count = sum(count))
+ps.wordfreq <- data.frame(word =ps.tdm.overall$term ,freq=ps.tdm.overall$s_count)
+ps.wordfreq <- ps.wordfreq[order(ps.wordfreq$freq,decreasing = TRUE),]
+
+wordcloud(ps.tdm.overall$term, ps.tdm.overall$s_count,scale=c(3,0.5),max.words=100,min.freq=100,random.order=FALSE,rot.per=0.3,use.r.layout=T,random.color=FALSE,colors=brewer.pal(8,"Accent"))
+
+
+barplot(ps.wordfreq[1:10,]$freq, las = 2, names.arg = ps.wordfreq[1:10,]$word, main ="Most frequent words", col=rgb(0.2,0.4,0.6,0.6),ylab = "Frequency", xlab = "Words")
+```
+
+
+
+Now let us see how many times the given word appears in the document it belongs to TF (term frequency). The higher the TF value of a given term to a document, the more influential the term is. However, if the term appears in all the documents in the collection, then it is not really important. As you can see below, a few words with higher weightage in each sentence than all the sentences are Know, True, Good, and Possible.
+
+```{r, wordFrequency-tf-idf,  warning=FALSE, message=FALSE, echo=FALSE}
+
+#Compute TF-IDF weighted document for individual sentences.
+ps.dtm <- DocumentTermMatrix(philosophy_data_corpus, control = list(weighting = weightTfIdf,stopwords = TRUE))
+ps.dtm = removeSparseTerms(ps.dtm , 0.99)
+
+freq = data.frame(f = sort(colSums(as.matrix(ps.dtm)), decreasing=TRUE))
+freq_df = data.frame(word = rownames(freq), f = freq$f)
+
+wordcloud(rownames(freq), freq[,1], max.words=40, colors=brewer.pal(9, "Accent"))
+
+barplot(freq_df[1:10,]$f, las = 2, names.arg = freq_df[1:10,]$word, main ="Highest weighted words in each sentence", col=rgb(0.2,0.4,0.6,0.6),ylab = "Frequency", xlab = "Words")
+
+```
+
+## Deep dive into various schools of thought.
+
+This section will try to identify what sentiment was emphasized in each school of thought, how each sentiment was divided in their teaching, and what words were used to convey these messages.
+
+#### Analytic: 
+As analytics philosophy emphasizes the study of language and the logical analysis of concepts, some of the words used in analytics philosophy are Subject, Thought, and Knowledge. And the sentiments in the teachings are mostly positive and netural.
+
+```{r,warning=FALSE, message=FALSE ,echo=FALSE}
+
+philosophyWordCloud=function(data_ps,colname,title_name){
+  data_ps = as.data.frame(data_ps)
+  colnames(data_ps) = colnames(colname)
+  data_ps.corpus = Corpus(VectorSource(data_ps$tokenized_txt))
+  data_ps.corpus = tm_map(data_ps.corpus, removeNumbers)
+  data_ps.corpus = tm_map(data_ps.corpus, removePunctuation)
+  data_ps.corpus = tm_map(data_ps.corpus, removeWords,listofstopwords)
+  data_ps.corpus =  tm_map(data_ps.corpus, stripWhitespace)
+  data_ps.tdm.all<-TermDocumentMatrix(data_ps.corpus)
+  data_ps.tdm.tidy=tidy(data_ps.tdm.all)
+  data_ps.tdm.overall=summarise(group_by(data_ps.tdm.tidy, term), s_count = sum(count))
+  pal2 <- brewer.pal(8,"Dark2")
+  
+  wordcloud(data_ps.tdm.overall$term, data_ps.tdm.overall$s_count,scale=c(3,0.5),max.words=100, min.freq=50,random.order=FALSE,rot.per=0.3,use.r.layout=T, colors=pal2)
+}
+
+#data set separation  based on school of thoughts
+analytic_df <- philosophy_data[philosophy_data$school=="analytic",]
+aristotle_df <- philosophy_data[philosophy_data$school=="aristotle",]
+capitalism_df <- philosophy_data[philosophy_data$school=="capitalism",]
+communism_df <- philosophy_data[philosophy_data$school=="communism",]
+continental_df <- philosophy_data[philosophy_data$school=="continental",]
+empiricism_df <- philosophy_data[philosophy_data$school=="empiricism",]
+feminism_df <- philosophy_data[philosophy_data$school=="feminism",]
+german_idealism_df <- philosophy_data[philosophy_data$school=="german_idealism",]
+nietzsche_df <- philosophy_data[philosophy_data$school=="nietzsche",]
+phenomenology_df <- philosophy_data[philosophy_data$school=="phenomenology",]
+plato_df <- philosophy_data[philosophy_data$school=="plato",]
+rationalism_df <- philosophy_data[philosophy_data$school=="rationalism",]
+stoicism_df <- philosophy_data[philosophy_data$school=="stoicism",]
+
+
+philosophyWordCloud(df_school_of_thought[1],philosophy_data,names(df_school_of_thought[1]))
+
+
+emotion_pie_chart <- function(emotion_df){
+  emotion_sent <- analyzeSentiment( as.character(emotion_df$sentence_str))$SentimentQDAP
+  emotion_result <- data.frame(emotion = convertToDirection(emotion_sent))
+  
+  negative <- length(emotion_result[emotion_result$emotion == "negative",])
+  positive <- length(emotion_result[emotion_result$emotion == "positive",])
+  netural <- length(emotion_result[emotion_result$emotion == "neutral",])
+  
+  val <- c(Negative = negative,Positive = positive, Netural = netural)
+  pie_labels <- paste0(c("Negative","Positive", "Netural"), " = ", round(100 * val/sum(val), 2), "%")
+  pie(val, labels = pie_labels, col=brewer.pal(n = 3, name = "RdBu")) 
+}
+
+
+emotion_pie_chart(analytic_df)
+```
+
+
+#### Aristotle: 
+Aristotle combines logic with observation to make general, causal claims. Some of the commonly used words used are Reason, Point, and Ideas. And the sentiments mainly were positive.
+
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[2],philosophy_data,names(df_school_of_thought[2]))
+emotion_pie_chart(aristotle_df)
+```
+
+
+#### Capitalism: 
+The capitalist system is based on the doctrine of individual rights. And the words used to describe this philosophy are First, Man, and People. A Majority of the sentiment in the teachings is positive.
+
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[3],philosophy_data,names(df_school_of_thought[3]))
+emotion_pie_chart(capitalism_df)
+```
+
+
+#### Communism: 
+Communism is a political and economic system that seeks to create a classless society, and everything is controlled by the public. Words used are Work, State, and Man. And the sentiments in the teachings are mostly positive and neutral.
+
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[4],philosophy_data,names(df_school_of_thought[4]))
+emotion_pie_chart(communism_df)
+```
+
+
+#### Continental: 
+Continental philosophy is often characterized by a focus on particular themes, including history, politics, the self and self-consciousness, freedom, desire, and will. The Sentiments are almost equally divided.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[5],philosophy_data,names(df_school_of_thought[5]))
+emotion_pie_chart(continental_df)
+```
+
+#### Empiricism: 
+Empiricism in the philosophy of science emphasizes evidence, especially as discovered in experiments. Words used are Principle, Question, and Reason. Sentiments in the sentences are mostly positive.
+
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[6],philosophy_data,names(df_school_of_thought[6]))
+emotion_pie_chart(empiricism_df)
+```
+
+
+#### Feminism: 
+Feminist philosophy is a philosophy aimed at understanding and challenging the oppression of women and gender equality. Words used are Women, Man, and Relationship. Sentiments are Positive and Negative.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[7],philosophy_data,names(df_school_of_thought[7]))
+emotion_pie_chart(feminism_df)
+```
+
+
+#### German Idealism: 
+Idealism asserts that reality is akin to ideas, thoughts, minds, or selves rather than material forces. Words used are Ideas, Sense, and Subject. The majority of the sentiment is Positive.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[8],philosophy_data,names(df_school_of_thought[8]))
+emotion_pie_chart(german_idealism_df)
+```
+
+#### Nietzsche: 
+Nietzsche aims at freeing human beings from their false consciousness about morality. Words used are Sense, Soul, and Value. Sentiments are almost equally divided.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[9],philosophy_data,names(df_school_of_thought[9]))
+emotion_pie_chart(nietzsche_df)
+```
+
+#### Phenomenology: 
+Phenomenology is a philosophy of experience. Words used are Experience, Existence, and Means.  Sentiments are almost equaly divided.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[10],philosophy_data,names(df_school_of_thought[10]))
+emotion_pie_chart(phenomenology_df)
+```
+
+
+#### Plato: 
+Plato's Theory of Forms says that the physical world is not the real world; reality exists beyond our physical world. Words that majorly appear in his work are Existence, Good, and Mind. And the majority of the sentiment is positive.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[11],philosophy_data,names(df_school_of_thought[11]))
+emotion_pie_chart(plato_df)
+```
+
+
+#### Rationalism: 
+Rationalism is the view that regards reason as the chief source and test of knowledge. Reason, Knowledge, and Case are some of the common words of rationalism. And the sentiment is mostly positive.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[12],philosophy_data,names(df_school_of_thought[12]))
+emotion_pie_chart(rationalism_df)
+```
+
+#### Stoicism: 
+The central philosophy of stoicism is that virtue is sufficient for happiness. Kind, Soul, and Mind appear mostly in this school of thought. Positive sentiment is the majority, but negative and neutral sentiments are equally divided.
+```{r,warning=FALSE, message=FALSE,echo=FALSE}
+philosophyWordCloud(df_school_of_thought[13],philosophy_data,names(df_school_of_thought[13]))
+emotion_pie_chart(stoicism_df)
+```
+
+## Conclusion
+
+The most important thing that I  observed from this philosophy data is that every school of thought uses similar topics to convey its ideology. The Sentiments of all idealogy is primarily positive.
